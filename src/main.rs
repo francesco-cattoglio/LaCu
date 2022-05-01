@@ -30,7 +30,7 @@ async fn main() {
     let bounds = 8.0;
 
     let mut cubes : CubeGrid = CubeGrid::default();
-    let mut last_mouse_position: Vec2 = mouse_position().into();
+    let mut saved_mouse_position: Vec2 = mouse_position().into();
 
     show_mouse(false);
 
@@ -43,10 +43,6 @@ async fn main() {
         if is_key_pressed(KeyCode::Escape) {
             break;
         }
-        let mouse_position: Vec2 = mouse_position().into();
-        let mouse_delta = mouse_position - last_mouse_position;
-        last_mouse_position = mouse_position;
-
         x += if switch { 0.04 } else { -0.04 };
         if x >= bounds || x <= -bounds {
             switch = !switch;
@@ -140,8 +136,17 @@ async fn main() {
             viewport_area = (0, (screen_height() - free_area.max.y) as i32, free_area.size().x as i32, free_area.size().y as i32);
         });
 
+
         // camera control
-        if !egui_mouse_requested && is_mouse_button_down(MouseButton::Left) {
+        if !egui_mouse_requested {
+            // TODO: check if this is needed for real, or everything still works even if we do not
+            // separate the first click-to-save position
+            if is_mouse_button_pressed(MouseButton::Left) {
+                saved_mouse_position = mouse_position().into();
+            } else if is_mouse_button_down(MouseButton::Left) {
+                let mouse_position: Vec2 = mouse_position().into();
+                let mouse_delta = mouse_position - saved_mouse_position;
+                saved_mouse_position = mouse_position;
             // move camera, something different can happen depending on the active view
             let scale = 0.02;
             match camera_view {
@@ -164,10 +169,14 @@ async fn main() {
                     camera.position.x -= scale * mouse_delta.x;
                 }
                 CameraView::Isometric => {
-                    unimplemented!()
+                    let camera_dir = camera.target - camera.position;
+                    let camera_left = camera.up.cross(camera_dir).normalize();
+                    camera.target += scale * (mouse_delta.x*camera_left + mouse_delta.y * camera.up);
+                    camera.position += scale * (mouse_delta.x*camera_left + mouse_delta.y * camera.up);
                 }
             }
         }
+}
 
         camera.viewport = Some(viewport_area);
         camera.aspect = Some(viewport_area.2 as f32 / viewport_area.3 as f32);
