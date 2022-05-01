@@ -9,31 +9,35 @@ enum Cube {
     Blue
 }
 
+enum CameraView {
+    Front,
+    Side,
+    Top,
+    Isometric
+}
+
 type CubeColumn = [Option<Cube>; GRID_SIZE];
 type CubeGrid = [[[Option<Cube>; GRID_SIZE]; GRID_SIZE]; GRID_SIZE];
 #[macroquad::main("BasicShapes")]
 async fn main() {
     let mut x = 0.0;
+    let mut camera_view = CameraView::Top;
+
+    let mut camera = create_top_camera();
 
     let mut dragged_cube: Option<Cube> = None;
     let mut switch = false;
     let bounds = 8.0;
 
     let mut cubes : CubeGrid = CubeGrid::default();
-    let world_up = vec3(0.0, 0.0, 1.0);
-
-    let mut camera_target = vec3(0.0, 0.0, 1.0);
-    let mut camera_position = camera_target + vec3(5.0, 5.0, 2.0);
-    let mut idx = IVec3::ZERO;
     let mut last_mouse_position: Vec2 = mouse_position().into();
 
-    let mut grabbed = false;
-    set_cursor_grab(grabbed);
     show_mouse(false);
 
     loop {
         let delta = get_frame_time();
 
+        let mut additional_zoom = 0.0;
         clear_background(LIGHTGRAY);
 
         if is_key_pressed(KeyCode::Escape) {
@@ -48,10 +52,9 @@ async fn main() {
             switch = !switch;
         }
 
-        // Going 3d!
+        // Whole egui UI
         egui_macroquad::ui(|egui_ctx| {
-
-            egui::SidePanel::right("my_right_panel")
+            egui::SidePanel::right("cube_builder_panel")
                 .resizable(false)
                 .show(egui_ctx, |ui| {
                 ui.label("Trascina i colori su questa griglia!");
@@ -101,75 +104,80 @@ async fn main() {
                 ui.horizontal(|ui| {
                     let camera_button_size = ui.spacing().interact_size.y * egui::vec2(3.0, 3.0);
                     if draw_x_icon(ui, camera_button_size).clicked() {
-                        dbg!("change camera to front!");
+                        camera = create_front_camera();
+                        camera_view = CameraView::Front;
                     };
                     if draw_y_icon(ui, camera_button_size).clicked() {
-                        println!("camera to side");
+                        camera = create_side_camera();
+                        camera_view = CameraView::Side;
                     }
                     if draw_z_icon(ui, camera_button_size).clicked() {
-                        println!("camera to top");
+                        camera = create_top_camera();
+                        camera_view = CameraView::Top;
                     }
                     if draw_xyz_icon(ui, camera_button_size).clicked() {
-                        println!("camera to isometric");
+                        camera = create_isometric_camera();
+                        camera_view = CameraView::Isometric;
                     }
+
+                    let rich_text = egui::RichText::new("🔎")
+                        .size(32.0)
+                        .color(egui::Color32::WHITE);
+                    ui.label(rich_text);
+                    let zoom_slider = egui::Slider::new(&mut additional_zoom, -2.0..=2.0)
+                        .show_value(false);
+                    ui.add_sized(ui.available_size(), zoom_slider);
                 });
             });
         });
 
-        set_camera(&Camera3D {
-            position: camera_position,
-            up: world_up,
-            projection: Projection::Orthographics,
-            target: camera_target,
-            fovy: 5.0,
-            viewport: Some((0, 0, 600, 480)), // viewport is (x, y, w, h)
-            aspect: Some(600_f32/480_f32),
-            ..Default::default()
+        let mut egui_mouse_requested = false;
+        let mut viewport_area = (0, 0, 0, 0);
+
+        egui_macroquad::cfg(|egui_ctx: &egui::Context| {
+            egui_mouse_requested = egui_ctx.wants_pointer_input() || egui_ctx.is_pointer_over_area();
+            let free_area = egui_ctx.available_rect();
+            viewport_area = (0, (screen_height() - free_area.max.y) as i32, free_area.size().x as i32, free_area.size().y as i32);
         });
 
-        let selector_position = idx.as_f32();
-        if is_key_pressed(KeyCode::G) {
-            cubes[idx.x as usize][idx.y as usize][idx.z as usize] = Some(Cube::Green);
+        // camera control
+        if !egui_mouse_requested && is_mouse_button_down(MouseButton::Left) {
+            // move camera, something different can happen depending on the active view
+            let scale = 0.02;
+            match camera_view {
+                CameraView::Top => {
+                    camera.target.x -= scale * mouse_delta.y;
+                    camera.position.x -= scale * mouse_delta.y;
+                    camera.target.y -= scale * mouse_delta.x;
+                    camera.position.y -= scale * mouse_delta.x;
+                }
+                CameraView::Front => {
+                    camera.target.z += scale * mouse_delta.y;
+                    camera.position.z += scale * mouse_delta.y;
+                    camera.target.y -= scale * mouse_delta.x;
+                    camera.position.y -= scale * mouse_delta.x;
+                }
+                CameraView::Side => {
+                    camera.target.z += scale * mouse_delta.y;
+                    camera.position.z += scale * mouse_delta.y;
+                    camera.target.x -= scale * mouse_delta.x;
+                    camera.position.x -= scale * mouse_delta.x;
+                }
+                CameraView::Isometric => {
+                    unimplemented!()
+                }
+            }
         }
 
-        if is_key_pressed(KeyCode::R) {
-            cubes[idx.x as usize][idx.y as usize][idx.z as usize] = Some(Cube::Red);
-        }
+        camera.viewport = Some(viewport_area);
+        camera.aspect = Some(viewport_area.2 as f32 / viewport_area.3 as f32);
+        camera.fovy -= additional_zoom * delta;
+        set_camera(&camera);
 
-        if is_key_pressed(KeyCode::B) {
-            cubes[idx.x as usize][idx.y as usize][idx.z as usize] = Some(Cube::Blue);
-        }
-
-        if is_key_pressed(KeyCode::X) {
-            cubes[idx.x as usize][idx.y as usize][idx.z as usize] = None;
-        }
-
-        if is_key_pressed(KeyCode::PageUp) {
-            idx.z = clamp(idx.z + 1, 0, GRID_SIZE as i32 - 1);
-        }
-        if is_key_pressed(KeyCode::PageDown) {
-            idx.z = clamp(idx.z - 1, 0, GRID_SIZE as i32 - 1);
-        }
-        if is_key_pressed(KeyCode::Up) {
-            idx.x = clamp(idx.x - 1, 0, GRID_SIZE as i32 - 1);
-        }
-        if is_key_pressed(KeyCode::Down) {
-            idx.x = clamp(idx.x + 1, 0, GRID_SIZE as i32 - 1);
-        }
-        if is_key_pressed(KeyCode::Left) {
-            idx.y = clamp(idx.y - 1, 0, GRID_SIZE as i32 - 1);
-        }
-        if is_key_pressed(KeyCode::Right) {
-            idx.y = clamp(idx.y + 1, 0, GRID_SIZE as i32 - 1);
-        }
         for x in 0..GRID_SIZE {
             for y in 0..GRID_SIZE {
                 for z in 0..GRID_SIZE {
-                    let edge_color = if idx.x == x as i32 && idx.y == y as i32 && idx.z == z as i32 {
-                        GOLD
-                    } else {
-                        BLACK
-                    };
+                    let edge_color = BLACK ;
                     if let Some(cube) = cubes[x][y][z] {
                         match cube {
                         Cube::Red => {
@@ -189,7 +197,6 @@ async fn main() {
                 }
             }
         }
-        draw_cube_wires(idx.as_f32(), vec3(1.0, 1.0, 1.0), DARKPURPLE);
 
         // Back to screen space, render some text
         egui_macroquad::draw();
@@ -329,4 +336,52 @@ fn compute_diamond_corners(mut rect: egui::Rect) -> Vec<egui::Pos2> {
         p4.to_pos2(),
         p5.to_pos2(),
     ]
+}
+
+fn create_top_camera() -> Camera3D {
+    let grid_mid = 0.5 * (GRID_SIZE as f32 - 1.0);
+    Camera3D {
+        position: vec3(grid_mid, grid_mid, 10.0),
+        up: vec3(-1.0, 0.0, 0.0),
+        projection: Projection::Orthographics,
+        target: vec3(grid_mid, grid_mid, 0.0),
+        fovy: 5.0,
+        ..Default::default()
+    }
+}
+
+fn create_front_camera() -> Camera3D {
+    let grid_mid = 0.5 * (GRID_SIZE as f32 - 1.0);
+    Camera3D {
+        position: vec3(10.0, grid_mid, grid_mid),
+        up: vec3(0.0, 0.0, 1.0),
+        projection: Projection::Orthographics,
+        target: vec3(0.0, grid_mid, grid_mid),
+        fovy: 5.0,
+        ..Default::default()
+    }
+}
+
+fn create_side_camera() -> Camera3D {
+    let grid_mid = 0.5 * (GRID_SIZE as f32 - 1.0);
+    Camera3D {
+        position: vec3(grid_mid, 10.0, grid_mid),
+        up: vec3(0.0, 0.0, 1.0),
+        projection: Projection::Orthographics,
+        target: vec3(grid_mid, 0.0, grid_mid),
+        fovy: 5.0,
+        ..Default::default()
+    }
+}
+
+fn create_isometric_camera() -> Camera3D {
+    let grid_mid = 0.5 * (GRID_SIZE as f32 - 1.0);
+    Camera3D {
+        position: vec3(grid_mid + 10.0, grid_mid + 7.5, grid_mid + 5.0),
+        up: vec3(0.0, 0.0, 1.0),
+        projection: Projection::Orthographics,
+        target: vec3(grid_mid, grid_mid, grid_mid),
+        fovy: 6.0,
+        ..Default::default()
+    }
 }
