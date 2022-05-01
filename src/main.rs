@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
 
-const GRID_SIZE: usize = 5;
+const GRID_SIZE: usize = 4;
 
 #[derive(Clone, Copy, Debug)]
 enum Cube {
@@ -22,7 +22,8 @@ async fn main() {
     let mut cubes : CubeGrid = CubeGrid::default();
     let world_up = vec3(0.0, 0.0, 1.0);
 
-    let mut position = vec3(4.0, 4.0, 2.0);
+    let mut camera_target = vec3(0.0, 0.0, 1.0);
+    let mut camera_position = camera_target + vec3(5.0, 5.0, 2.0);
     let mut idx = IVec3::ZERO;
     let mut last_mouse_position: Vec2 = mouse_position().into();
 
@@ -53,8 +54,7 @@ async fn main() {
             egui::SidePanel::right("my_right_panel")
                 .resizable(false)
                 .show(egui_ctx, |ui| {
-                ui.label("Hello World!");
-                ui.label("Shasdfasdfasdfow egui demo windows");
+                ui.label("Trascina i colori su questa griglia!");
                 // show the widget that is used to place the cubes
                 let colored_square_size = ui.spacing().interact_size.y * egui::vec2(2.5, 2.5);
                 let colored_square_spacing = ui.spacing().interact_size.y * egui::vec2(0.2, 0.2);
@@ -82,7 +82,7 @@ async fn main() {
                 if ui.input().pointer.any_released() {
                     dragged_cube = None;
                 }
-                ui.label("Cubi colorati");
+                ui.label("Colori disponibili");
                 let square_size = ui.spacing().interact_size.y * egui::vec2(2.0, 2.0);
                 ui.horizontal(|ui| {
                     if draw_drag_cube(ui, egui::Color32::RED, square_size) {
@@ -96,23 +96,34 @@ async fn main() {
                     }
                 });
             });
-            // TOP BAR: views
-            egui::TopBottomPanel::top("my_panel").show(egui_ctx, |ui| {
+            // BOT BAR: camera
+            egui::TopBottomPanel::bottom("camera_panel").show(egui_ctx, |ui| {
                 ui.horizontal(|ui| {
-
-                   ui.button("Front!");
-                   ui.button("Side!");
-                   ui.button("Bottom!");
+                    let camera_button_size = ui.spacing().interact_size.y * egui::vec2(3.0, 3.0);
+                    if draw_x_icon(ui, camera_button_size).clicked() {
+                        dbg!("change camera to front!");
+                    };
+                    if draw_y_icon(ui, camera_button_size).clicked() {
+                        println!("camera to side");
+                    }
+                    if draw_z_icon(ui, camera_button_size).clicked() {
+                        println!("camera to top");
+                    }
+                    if draw_xyz_icon(ui, camera_button_size).clicked() {
+                        println!("camera to isometric");
+                    }
                 });
             });
         });
 
         set_camera(&Camera3D {
-            position,
+            position: camera_position,
             up: world_up,
             projection: Projection::Orthographics,
-            target: vec3(0.0, 0.0, 0.0),
+            target: camera_target,
             fovy: 5.0,
+            viewport: Some((0, 0, 600, 480)), // viewport is (x, y, w, h)
+            aspect: Some(600_f32/480_f32),
             ..Default::default()
         });
 
@@ -229,4 +240,93 @@ fn draw_drag_cube(ui: &mut egui::Ui, color: egui::Color32, size: egui::Vec2) -> 
     let (rect, response) = ui.allocate_at_least(size, egui::Sense::drag());
     ui.painter().rect(rect, 2.0, color, egui::Stroke::default());
         response.drag_started()
+}
+
+fn draw_x_icon(ui: &mut egui::Ui, size: egui::Vec2) -> egui::Response {
+    let (rect, response) = ui.allocate_at_least(size, egui::Sense::click());
+    ui.painter().rect_filled(rect, 4.0, egui::Color32::LIGHT_GRAY);
+    let points = compute_diamond_corners(rect);
+    let face = vec![points[5], rect.center(), points[3], points[4]];
+    let p_stroke =  egui::Stroke::new(4.0, egui::Color32::BLACK);
+    let f_stroke =  egui::Stroke::new(2.0, egui::Color32::BLACK);
+    ui.painter().line_segment([rect.center(), points[1]], f_stroke);
+    let sil = egui::Shape::convex_polygon(points, egui::Color32::TRANSPARENT, p_stroke);
+    ui.painter().add(sil);
+    let fill = egui::Shape::convex_polygon(face, egui::Color32::DARK_RED, f_stroke);
+    ui.painter().add(fill);
+
+    response
+}
+
+fn draw_y_icon(ui: &mut egui::Ui, size: egui::Vec2) -> egui::Response {
+    let (rect, response) = ui.allocate_at_least(size, egui::Sense::click());
+    ui.painter().rect_filled(rect, 4.0, egui::Color32::LIGHT_GRAY);
+    let points = compute_diamond_corners(rect);
+    let face = vec![points[1], points[2], points[3], rect.center()];
+    let p_stroke =  egui::Stroke::new(4.0, egui::Color32::BLACK);
+    let f_stroke =  egui::Stroke::new(2.0, egui::Color32::BLACK);
+    ui.painter().line_segment([rect.center(), points[5]], f_stroke);
+    let sil = egui::Shape::convex_polygon(points, egui::Color32::TRANSPARENT, p_stroke);
+    ui.painter().add(sil);
+    let fill = egui::Shape::convex_polygon(face, egui::Color32::DARK_GREEN, f_stroke);
+    ui.painter().add(fill);
+
+    response
+}
+
+fn draw_z_icon(ui: &mut egui::Ui, size: egui::Vec2) -> egui::Response {
+    let (rect, response) = ui.allocate_at_least(size, egui::Sense::click());
+    ui.painter().rect_filled(rect, 4.0, egui::Color32::LIGHT_GRAY);
+    let points = compute_diamond_corners(rect);
+    let face = vec![points[0], points[1], rect.center(), points[5]];
+    let p_stroke =  egui::Stroke::new(4.0, egui::Color32::BLACK);
+    let f_stroke =  egui::Stroke::new(2.0, egui::Color32::BLACK);
+    ui.painter().line_segment([rect.center(), points[3]], f_stroke);
+    let sil = egui::Shape::convex_polygon(points, egui::Color32::TRANSPARENT, p_stroke);
+    ui.painter().add(sil);
+    let fill = egui::Shape::convex_polygon(face, egui::Color32::DARK_BLUE, f_stroke);
+    ui.painter().add(fill);
+
+    response
+}
+
+fn draw_xyz_icon(ui: &mut egui::Ui, size: egui::Vec2) -> egui::Response {
+    let (rect, response) = ui.allocate_at_least(size, egui::Sense::click());
+    ui.painter().rect_filled(rect, 4.0, egui::Color32::LIGHT_GRAY);
+    let points = compute_diamond_corners(rect);
+    let face_x = vec![points[5], rect.center(), points[3], points[4]];
+    let face_y = vec![points[1], points[2], points[3], rect.center()];
+    let face_z = vec![points[0], points[1], rect.center(), points[5]];
+    let p_stroke =  egui::Stroke::new(4.0, egui::Color32::BLACK);
+    let f_stroke =  egui::Stroke::new(2.0, egui::Color32::BLACK);
+    let sil = egui::Shape::convex_polygon(points, egui::Color32::TRANSPARENT, p_stroke);
+    let fill_x = egui::Shape::convex_polygon(face_x, egui::Color32::DARK_RED, f_stroke);
+    let fill_y = egui::Shape::convex_polygon(face_y, egui::Color32::DARK_GREEN, f_stroke);
+    let fill_z = egui::Shape::convex_polygon(face_z, egui::Color32::DARK_BLUE, f_stroke);
+    ui.painter().extend(vec![sil, fill_x, fill_y, fill_z]);
+
+    response
+}
+
+fn compute_diamond_corners(mut rect: egui::Rect) -> Vec<egui::Pos2> {
+    rect = rect.shrink(4.0);
+    let tl = rect.min.to_vec2();
+    let br = rect.max.to_vec2();
+    let tr = egui::vec2(br.x, tl.y);
+    let bl = egui::vec2(tl.x, br.y);
+    let p0 = tl * 0.5 + tr * 0.5;
+    let p1 = tr * 0.75 + br * 0.25;
+    let p2 = tr * 0.25 + br * 0.75;
+    let p3 = bl * 0.5 + br * 0.5;
+    let p4 = tl * 0.25 + bl * 0.75;
+    let p5 = tl * 0.75 + bl * 0.25;
+
+    vec![
+        p0.to_pos2(),
+        p1.to_pos2(),
+        p2.to_pos2(),
+        p3.to_pos2(),
+        p4.to_pos2(),
+        p5.to_pos2(),
+    ]
 }
