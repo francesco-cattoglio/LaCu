@@ -21,11 +21,22 @@ enum CameraView {
 
 type CubeColumn = [Option<Cube>; GRID_SIZE];
 type CubeGrid = [[[Option<Cube>; GRID_SIZE]; GRID_SIZE]; GRID_SIZE];
-#[macroquad::main("BasicShapes")]
+
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "ColorCubes".to_owned(),
+        sample_count: 8,
+        fullscreen: false,
+        ..Default::default()
+    }
+}
+
+#[macroquad::main(window_conf)]
 async fn main() {
     let mut camera_view = CameraView::Isometric;
     let mut camera = create_isometric_camera();
 
+    let mut show_paving: bool = true;
     let mut hide_builder: bool = false;
     let mut dragged_cube: Option<Cube> = None;
 
@@ -105,6 +116,7 @@ async fn main() {
                                 dragged_cube = Some(Cube::Blue);
                             }
                         });
+                        ui.checkbox(&mut show_paving, "Mostra la scacchiera");
                     });
                 });
             };
@@ -207,27 +219,29 @@ async fn main() {
 
         for x in 0..GRID_SIZE {
             for y in 0..GRID_SIZE {
-                // add some cubes to be used as a "pavement"
-                let paving_color = if (x+y) % 2 == 0 {
-                    GRAY
-                } else {
-                    LIGHTGRAY
-                };
-                draw_cube(vec3(x as f32, y as f32, -0.6), vec3(1.0, 1.0, 0.2), None, paving_color);
+                if show_paving {
+                    // add some cubes to be used as a "pavement"
+                    let paving_color = if (x+y) % 2 == 0 {
+                        GRAY
+                    } else {
+                        LIGHTGRAY
+                    };
+                    draw_cube(vec3(x as f32, y as f32, -0.6), vec3(1.0, 1.0, 0.2), None, paving_color);
+                }
                 for z in 0..GRID_SIZE {
                     let edge_color = BLACK ;
                     if let Some(cube) = cubes[x][y][z] {
                         match cube {
                             Cube::Red => {
-                                draw_cube(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), None, RED);
+                                draw_cube(vec3(x as f32, y as f32, z as f32), vec3(0.99, 0.99, 0.99), None, RED);
                                 draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
                             }
                             Cube::Green => {
-                                draw_cube(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), None, GREEN);
+                                draw_cube(vec3(x as f32, y as f32, z as f32), vec3(0.99, 0.99, 0.99), None, GREEN);
                                 draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
                             }
                             Cube::Blue => {
-                                draw_cube(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), None, BLUE);
+                                draw_cube(vec3(x as f32, y as f32, z as f32), vec3(0.99, 0.99, 0.99), None, BLUE);
                                 draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
                             }
                         }
