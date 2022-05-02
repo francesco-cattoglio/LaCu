@@ -169,36 +169,36 @@ async fn main() {
                 let mouse_position: Vec2 = mouse_position().into();
                 let mouse_delta = mouse_position - saved_mouse_position;
                 saved_mouse_position = mouse_position;
-            // move camera, something different can happen depending on the active view
-            let scale = 0.02;
-            match camera_view {
-                CameraView::Top => {
-                    camera.target.x -= scale * mouse_delta.y;
-                    camera.position.x -= scale * mouse_delta.y;
-                    camera.target.y -= scale * mouse_delta.x;
-                    camera.position.y -= scale * mouse_delta.x;
-                }
-                CameraView::Front => {
-                    camera.target.z += scale * mouse_delta.y;
-                    camera.position.z += scale * mouse_delta.y;
-                    camera.target.y -= scale * mouse_delta.x;
-                    camera.position.y -= scale * mouse_delta.x;
-                }
-                CameraView::Side => {
-                    camera.target.z += scale * mouse_delta.y;
-                    camera.position.z += scale * mouse_delta.y;
-                    camera.target.x -= scale * mouse_delta.x;
-                    camera.position.x -= scale * mouse_delta.x;
-                }
-                CameraView::Isometric => {
-                    let camera_dir = camera.target - camera.position;
-                    let camera_left = camera.up.cross(camera_dir).normalize();
-                    camera.target += scale * (mouse_delta.x*camera_left + mouse_delta.y * camera.up);
-                    camera.position += scale * (mouse_delta.x*camera_left + mouse_delta.y * camera.up);
+                // move camera, something different can happen depending on the active view
+                let scale = 0.02;
+                match camera_view {
+                    CameraView::Top => {
+                        camera.target.x -= scale * mouse_delta.y;
+                        camera.position.x -= scale * mouse_delta.y;
+                        camera.target.y -= scale * mouse_delta.x;
+                        camera.position.y -= scale * mouse_delta.x;
+                    }
+                    CameraView::Front => {
+                        camera.target.z += scale * mouse_delta.y;
+                        camera.position.z += scale * mouse_delta.y;
+                        camera.target.y -= scale * mouse_delta.x;
+                        camera.position.y -= scale * mouse_delta.x;
+                    }
+                    CameraView::Side => {
+                        camera.target.z += scale * mouse_delta.y;
+                        camera.position.z += scale * mouse_delta.y;
+                        camera.target.x -= scale * mouse_delta.x;
+                        camera.position.x -= scale * mouse_delta.x;
+                    }
+                    CameraView::Isometric => {
+                        let camera_dir = camera.target - camera.position;
+                        let camera_left = camera.up.cross(camera_dir).normalize();
+                        camera.target += scale * (mouse_delta.x*camera_left + mouse_delta.y * camera.up);
+                        camera.position += scale * (mouse_delta.x*camera_left + mouse_delta.y * camera.up);
+                    }
                 }
             }
         }
-}
 
         camera.viewport = Some(viewport_area);
         camera.aspect = Some(viewport_area.2 as f32 / viewport_area.3 as f32);
@@ -218,18 +218,18 @@ async fn main() {
                     let edge_color = BLACK ;
                     if let Some(cube) = cubes[x][y][z] {
                         match cube {
-                        Cube::Red => {
-                            draw_cube(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), None, RED);
-                            draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
-                        }
-                        Cube::Green => {
-                            draw_cube(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), None, GREEN);
-                            draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
-                        }
-                        Cube::Blue => {
-                            draw_cube(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), None, BLUE);
-                            draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
-                        }
+                            Cube::Red => {
+                                draw_cube(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), None, RED);
+                                draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
+                            }
+                            Cube::Green => {
+                                draw_cube(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), None, GREEN);
+                                draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
+                            }
+                            Cube::Blue => {
+                                draw_cube(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), None, BLUE);
+                                draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
+                            }
                         }
                     }
                 }
