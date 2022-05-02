@@ -45,60 +45,78 @@ async fn main() {
         }
 
         // Whole egui UI
+        let vertical_display = screen_height() > screen_width();
         egui_macroquad::ui(|egui_ctx| {
-            egui::SidePanel::right("cube_builder_panel")
-                .resizable(false)
-                .show(egui_ctx, |ui| {
-                ui.label("Trascina i colori su questa griglia!");
-                // show the widget that is used to place the cubes
-                let colored_square_size = ui.spacing().interact_size.y * egui::vec2(2.5, 2.5);
-                let colored_square_spacing = ui.spacing().interact_size.y * egui::vec2(0.2, 0.2);
-                let shrink_amount = ui.spacing().interact_size.y * egui::vec2(0.25, 0.25);
-                ui.checkbox(&mut hide_builder, "Nascondi lo schema");
-                if hide_builder {
-                    let total_size = colored_square_size * GRID_SIZE as f32 + colored_square_spacing * (GRID_SIZE - 1) as f32;
-                    let (rect, _response) = ui.allocate_exact_size(total_size, egui::Sense::click());
-                    let label = egui::widgets::Label::new(egui::RichText::new("?").color(egui::Color32::KHAKI).size(72.0));
-                    ui.put(rect, label);
+            let cube_builder_lambda = |ui: &mut egui::Ui| {
+                let layout = if vertical_display {
+                    egui::Layout::left_to_right()
                 } else {
-                    egui::Grid::new("cube_builder")
-                        .spacing(colored_square_spacing)
-                        .show(ui, |ui| {
-                            for x in 0..GRID_SIZE {
-                                for y in 0..GRID_SIZE {
-                                    let (rect, response) = ui.allocate_exact_size(colored_square_size, egui::Sense::click());
-                                    if response.double_clicked() {
-                                        pop_top(&mut cubes, x, y);
-                                    }
-                                    if let Some(dropped_cube) = dragged_cube {
-                                        if ui.input().pointer.any_released() && response.hovered() {
-                                            push_top(&mut cubes, x, y, dropped_cube);
+                    egui::Layout::top_down(egui::Align::Min)
+                };
+                ui.with_layout(layout, |ui| {
+                    ui.vertical(|ui| {
+                        // show the widget that is used to place the cubes
+                        let colored_square_size = ui.spacing().interact_size.y * egui::vec2(2.5, 2.5);
+                        let colored_square_spacing = ui.spacing().interact_size.y * egui::vec2(0.2, 0.2);
+                        let shrink_amount = ui.spacing().interact_size.y * egui::vec2(0.25, 0.25);
+                        ui.checkbox(&mut hide_builder, "Nascondi lo schema");
+                        if hide_builder {
+                            let total_size = colored_square_size * GRID_SIZE as f32 + colored_square_spacing * (GRID_SIZE - 1) as f32;
+                            let (rect, _response) = ui.allocate_exact_size(total_size, egui::Sense::click());
+                            let label = egui::widgets::Label::new(egui::RichText::new("?").color(egui::Color32::KHAKI).size(72.0));
+                            ui.put(rect, label);
+                        } else {
+                            egui::Grid::new("cube_builder")
+                                .spacing(colored_square_spacing)
+                                .show(ui, |ui| {
+                                    for x in 0..GRID_SIZE {
+                                        for y in 0..GRID_SIZE {
+                                            let (rect, response) = ui.allocate_exact_size(colored_square_size, egui::Sense::click());
+                                            if response.double_clicked() {
+                                                pop_top(&mut cubes, x, y);
+                                            }
+                                            if let Some(dropped_cube) = dragged_cube {
+                                                if ui.input().pointer.any_released() && response.hovered() {
+                                                    push_top(&mut cubes, x, y, dropped_cube);
+                                                }
+                                            }
+                                            draw_column(&cubes[x][y], ui, rect, shrink_amount);
                                         }
+                                        ui.end_row();
                                     }
-                                    draw_column(&cubes[x][y], ui, rect, shrink_amount);
-                                }
-                                ui.end_row();
+                                });
+
+                        }
+                        if ui.input().pointer.any_released() {
+                            dragged_cube = None;
+                        }
+                    });
+                    ui.vertical(|ui| {
+                        ui.label("Colori disponibili");
+                        let square_size = ui.spacing().interact_size.y * egui::vec2(2.0, 2.0);
+                        ui.horizontal(|ui| {
+                            if draw_drag_cube(ui, egui::Color32::RED, square_size) {
+                                dragged_cube = Some(Cube::Red);
+                            }
+                            if draw_drag_cube(ui, egui::Color32::GREEN, square_size) {
+                                dragged_cube = Some(Cube::Green);
+                            }
+                            if draw_drag_cube(ui, egui::Color32::BLUE, square_size) {
+                                dragged_cube = Some(Cube::Blue);
                             }
                         });
-
-                }
-                if ui.input().pointer.any_released() {
-                    dragged_cube = None;
-                }
-                ui.label("Colori disponibili");
-                let square_size = ui.spacing().interact_size.y * egui::vec2(2.0, 2.0);
-                ui.horizontal(|ui| {
-                    if draw_drag_cube(ui, egui::Color32::RED, square_size) {
-                        dragged_cube = Some(Cube::Red);
-                    }
-                    if draw_drag_cube(ui, egui::Color32::GREEN, square_size) {
-                        dragged_cube = Some(Cube::Green);
-                    }
-                    if draw_drag_cube(ui, egui::Color32::BLUE, square_size) {
-                        dragged_cube = Some(Cube::Blue);
-                    }
+                    });
                 });
-            });
+            };
+            if vertical_display {
+                egui::TopBottomPanel::top("cube_builder_panel")
+                    .resizable(false)
+                    .show(egui_ctx, cube_builder_lambda);
+            } else {
+                egui::SidePanel::right("cube_builder_panel")
+                    .resizable(false)
+                    .show(egui_ctx, cube_builder_lambda);
+            }
             // BOT BAR: camera
             egui::TopBottomPanel::bottom("camera_panel").show(egui_ctx, |ui| {
                 ui.horizontal(|ui| {
