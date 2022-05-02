@@ -1,4 +1,7 @@
+use egui::RichText;
 use macroquad::prelude::*;
+
+mod cubes;
 
 const GRID_SIZE: usize = 4;
 
@@ -20,14 +23,11 @@ type CubeColumn = [Option<Cube>; GRID_SIZE];
 type CubeGrid = [[[Option<Cube>; GRID_SIZE]; GRID_SIZE]; GRID_SIZE];
 #[macroquad::main("BasicShapes")]
 async fn main() {
-    let mut x = 0.0;
-    let mut camera_view = CameraView::Top;
+    let mut camera_view = CameraView::Isometric;
+    let mut camera = create_isometric_camera();
 
-    let mut camera = create_top_camera();
-
+    let mut hide_builder: bool = false;
     let mut dragged_cube: Option<Cube> = None;
-    let mut switch = false;
-    let bounds = 8.0;
 
     let mut cubes : CubeGrid = CubeGrid::default();
     let mut saved_mouse_position: Vec2 = mouse_position().into();
@@ -38,14 +38,10 @@ async fn main() {
         let delta = get_frame_time();
 
         let mut additional_zoom = 0.0;
-        clear_background(LIGHTGRAY);
+        clear_background(WHITE);
 
         if is_key_pressed(KeyCode::Escape) {
             break;
-        }
-        x += if switch { 0.04 } else { -0.04 };
-        if x >= bounds || x <= -bounds {
-            switch = !switch;
         }
 
         // Whole egui UI
@@ -58,26 +54,34 @@ async fn main() {
                 let colored_square_size = ui.spacing().interact_size.y * egui::vec2(2.5, 2.5);
                 let colored_square_spacing = ui.spacing().interact_size.y * egui::vec2(0.2, 0.2);
                 let shrink_amount = ui.spacing().interact_size.y * egui::vec2(0.25, 0.25);
-                egui::Grid::new("cube_builder")
-                    .spacing(colored_square_spacing)
-                    .show(ui, |ui| {
-                        for x in 0..GRID_SIZE {
-                            for y in 0..GRID_SIZE {
-                                let (rect, response) = ui.allocate_exact_size(colored_square_size, egui::Sense::click());
-                                if response.double_clicked() {
-                                    pop_top(&mut cubes, x, y);
-                                }
-                                if let Some(dropped_cube) = dragged_cube {
-                                    if ui.input().pointer.any_released() && response.hovered() {
-                                        push_top(&mut cubes, x, y, dropped_cube);
+                ui.checkbox(&mut hide_builder, "Nascondi lo schema");
+                if hide_builder {
+                    let total_size = colored_square_size * GRID_SIZE as f32 + colored_square_spacing * (GRID_SIZE - 1) as f32;
+                    let (rect, _response) = ui.allocate_exact_size(total_size, egui::Sense::click());
+                    let label = egui::widgets::Label::new(egui::RichText::new("?").color(egui::Color32::KHAKI).size(72.0));
+                    ui.put(rect, label);
+                } else {
+                    egui::Grid::new("cube_builder")
+                        .spacing(colored_square_spacing)
+                        .show(ui, |ui| {
+                            for x in 0..GRID_SIZE {
+                                for y in 0..GRID_SIZE {
+                                    let (rect, response) = ui.allocate_exact_size(colored_square_size, egui::Sense::click());
+                                    if response.double_clicked() {
+                                        pop_top(&mut cubes, x, y);
                                     }
+                                    if let Some(dropped_cube) = dragged_cube {
+                                        if ui.input().pointer.any_released() && response.hovered() {
+                                            push_top(&mut cubes, x, y, dropped_cube);
+                                        }
+                                    }
+                                    draw_column(&cubes[x][y], ui, rect, shrink_amount);
                                 }
-                                draw_column(&cubes[x][y], ui, rect, shrink_amount);
+                                ui.end_row();
                             }
-                            ui.end_row();
-                        }
-                    });
+                        });
 
+                }
                 if ui.input().pointer.any_released() {
                     dragged_cube = None;
                 }
@@ -185,6 +189,13 @@ async fn main() {
 
         for x in 0..GRID_SIZE {
             for y in 0..GRID_SIZE {
+                // add some cubes to be used as a "pavement"
+                let paving_color = if (x+y) % 2 == 0 {
+                    GRAY
+                } else {
+                    LIGHTGRAY
+                };
+                draw_cube(vec3(x as f32, y as f32, -0.6), vec3(1.0, 1.0, 0.2), None, paving_color);
                 for z in 0..GRID_SIZE {
                     let edge_color = BLACK ;
                     if let Some(cube) = cubes[x][y][z] {
