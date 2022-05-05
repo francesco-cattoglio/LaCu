@@ -1,8 +1,13 @@
+use std::f32::consts::PI;
+
+use egui::epaint::*;
 use enum_map::EnumMap;
 
 use macroquad::models::{Mesh, Vertex};
-use macroquad::prelude::{vec2, vec3};
+use macroquad::prelude::{vec2, vec3, Mat3};
 use macroquad::color::{Color, colors};
+
+use egui::{Shape, Stroke};
 
 #[derive(Clone, Copy, Debug, Enum)]
 pub enum Cube {
@@ -10,11 +15,16 @@ pub enum Cube {
     Red,
     Blue,
     Yellow,
+    White,
+    NorthRedWhite,
+    WestRedWhite,
+    SouthRedWhite,
+    EastRedWhite,
 }
 
 pub struct CubeInfo {
     pub mesh: Mesh,
-    pub egui_color: egui::Color32,
+    pub egui_shape: egui::Shape,
 }
 
 pub type CubeMap = EnumMap<Cube, CubeInfo>;
@@ -23,19 +33,116 @@ pub fn create_default_cubemap() -> CubeMap {
     let map = enum_map!{
         Cube::Green => CubeInfo {
             mesh: default_cube(colors::GREEN),
-            egui_color: egui::Color32::GREEN,
+            egui_shape: Shape::Rect(RectShape{
+                rect: egui::Rect { min: pos2(0.0, 0.0), max: pos2(1.0, 1.0) },
+                rounding: Rounding::none(),
+                fill: egui::Color32::GREEN,
+                stroke: Stroke::none(),
+            }),
         },
         Cube::Red => CubeInfo {
             mesh: default_cube(colors::RED),
-            egui_color: egui::Color32::RED,
+            egui_shape: Shape::Rect(RectShape{
+                rect: egui::Rect { min: pos2(0.0, 0.0), max: pos2(1.0, 1.0) },
+                rounding: Rounding::none(),
+                fill: egui::Color32::RED,
+                stroke: Stroke::none(),
+            }),
         },
         Cube::Blue => CubeInfo {
             mesh: default_cube(colors::BLUE),
-            egui_color: egui::Color32::BLUE,
+            egui_shape: Shape::Rect(RectShape{
+                rect: egui::Rect { min: pos2(0.0, 0.0), max: pos2(1.0, 1.0) },
+                rounding: Rounding::none(),
+                fill: egui::Color32::BLUE,
+                stroke: Stroke::none(),
+            }),
         },
         Cube::Yellow => CubeInfo {
             mesh: default_cube(colors::GOLD),
-            egui_color: egui::Color32::GOLD,
+            egui_shape: Shape::Rect(RectShape{
+                rect: egui::Rect { min: pos2(0.0, 0.0), max: pos2(1.0, 1.0) },
+                rounding: Rounding::none(),
+                fill: egui::Color32::GOLD,
+                stroke: Stroke::none(),
+            }),
+        },
+        Cube::White => CubeInfo {
+            mesh: default_cube(colors::WHITE),
+            egui_shape: Shape::Rect(RectShape{
+                rect: egui::Rect { min: pos2(0.0, 0.0), max: pos2(1.0, 1.0) },
+                rounding: Rounding::none(),
+                fill: egui::Color32::WHITE,
+                stroke: Stroke::none(),
+            }),
+        },
+        Cube::NorthRedWhite => CubeInfo {
+            mesh: split_color_cube(colors::RED, colors::WHITE, 0.0),
+            egui_shape: Shape::Vec(vec![
+                Shape::Path(PathShape {
+                    points: vec![pos2(1.0, 0.0), pos2(0.0, 0.0), pos2(0.0, 1.0)],
+                    closed: true,
+                    stroke: Stroke::none(),
+                    fill: egui::Color32::RED,
+                }),
+                Shape::Path(PathShape {
+                    points: vec![pos2(1.0, 1.0), pos2(1.0, 0.0), pos2(0.0, 1.0)],
+                    closed: true,
+                    stroke: Stroke::none(),
+                    fill: egui::Color32::WHITE,
+                }),
+            ]),
+        },
+        Cube::WestRedWhite => CubeInfo {
+            mesh: split_color_cube(colors::RED, colors::WHITE, 0.5 * PI),
+            egui_shape: Shape::Vec(vec![
+                Shape::Path(PathShape {
+                    points: vec![pos2(0.0, 0.0), pos2(0.0, 1.0), pos2(1.0, 1.0)],
+                    closed: true,
+                    stroke: Stroke::none(),
+                    fill: egui::Color32::RED,
+                }),
+                Shape::Path(PathShape {
+                    points: vec![pos2(0.0, 0.0), pos2(1.0, 0.0), pos2(1.0, 1.0)],
+                    closed: true,
+                    stroke: Stroke::none(),
+                    fill: egui::Color32::WHITE,
+                }),
+            ]),
+        },
+        Cube::SouthRedWhite => CubeInfo {
+            mesh: split_color_cube(colors::RED, colors::WHITE, 1.0 * PI),
+            egui_shape: Shape::Vec(vec![
+                Shape::Path(PathShape {
+                    points: vec![pos2(1.0, 0.0), pos2(0.0, 0.0), pos2(0.0, 1.0)],
+                    closed: true,
+                    stroke: Stroke::none(),
+                    fill: egui::Color32::WHITE,
+                }),
+                Shape::Path(PathShape {
+                    points: vec![pos2(1.0, 1.0), pos2(1.0, 0.0), pos2(0.0, 1.0)],
+                    closed: true,
+                    stroke: Stroke::none(),
+                    fill: egui::Color32::RED,
+                }),
+            ]),
+        },
+        Cube::EastRedWhite => CubeInfo {
+            mesh: split_color_cube(colors::RED, colors::WHITE, 1.5 * PI),
+            egui_shape: Shape::Vec(vec![
+                Shape::Path(PathShape {
+                    points: vec![pos2(0.0, 0.0), pos2(0.0, 1.0), pos2(1.0, 1.0)],
+                    closed: true,
+                    stroke: Stroke::none(),
+                    fill: egui::Color32::WHITE,
+                }),
+                Shape::Path(PathShape {
+                    points: vec![pos2(0.0, 0.0), pos2(1.0, 0.0), pos2(1.0, 1.0)],
+                    closed: true,
+                    stroke: Stroke::none(),
+                    fill: egui::Color32::RED,
+                }),
+            ]),
         },
     };
 
@@ -43,88 +150,98 @@ pub fn create_default_cubemap() -> CubeMap {
 }
 
 pub fn default_cube(color: Color) -> Mesh {
+    split_color_cube(color, color, 0.0)
+}
 
+pub fn split_color_cube(color_north: Color, color_south: Color, rotation: f32) -> Mesh {
+
+    let uv = vec2(0.0, 0.0);
+    let rot = Mat3::from_rotation_z(rotation);
     let vertices = vec![
-        Vertex{position: vec3(-0.500000, -0.466667,  0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.466667, -0.500000,  0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.466667, -0.466667,  0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.500000, -0.500000,  0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.466667, -0.500000,  0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.500000,  0.466667,  0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.500000,  0.500000,  0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.500000,  0.466667,  0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.500000, -0.466667, -0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.466667, -0.500000, -0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.466667, -0.466667, -0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.500000, -0.466667,  0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.500000, -0.500000,  0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.500000, -0.466667,  0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.466667,  0.500000,  0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.500000,  0.500000,  0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.466667,  0.500000,  0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.500000,  0.500000,  0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.500000,  0.466667,  0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.500000,  0.466667,  0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.500000,  0.500000, -0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.466667,  0.466667, -0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.466667,  0.500000, -0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.500000,  0.466667, -0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.500000, -0.500000,  0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.500000, -0.466667,  0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.500000,  0.500000,  0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.466667,  0.466667,  0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.466667,  0.500000,  0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.466667,  0.466667,  0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.466667,  0.466667, -0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.500000, -0.466667, -0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.500000,  0.466667, -0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.466667,  0.500000, -0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.500000,  0.500000, -0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.466667,  0.500000,  0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.466667, -0.466667, -0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.500000, -0.500000, -0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.466667, -0.500000, -0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.500000, -0.500000,  0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.466667, -0.500000,  0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.466667, -0.500000,  0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.466667, -0.466667,  0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.466667, -0.500000, -0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.500000, -0.500000, -0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.500000, -0.500000, -0.500000), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.466667,  0.500000, -0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.500000,  0.500000, -0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.500000, -0.466667, -0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.500000, -0.500000, -0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.500000,  0.466667, -0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.500000,  0.500000, -0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.466667,  0.500000, -0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3( 0.500000, -0.466667, -0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.500000,  0.466667, -0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.466667, -0.500000, -0.466667), uv: vec2(0.0, 0.0), color: colors::BLACK},
-        Vertex{position: vec3(-0.466667,  0.466667,  0.500000), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3( 0.466667, -0.466667,  0.500000), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3( 0.466667,  0.466667,  0.500000), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3( 0.466667,  0.466667, -0.500000), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3(-0.466667, -0.466667, -0.500000), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3(-0.466667,  0.466667, -0.500000), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3( 0.466667, -0.500000,  0.466667), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3(-0.466667, -0.500000, -0.466667), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3( 0.466667, -0.500000, -0.466667), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3(-0.466667,  0.500000,  0.466667), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3( 0.466667,  0.500000, -0.466667), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3(-0.466667,  0.500000, -0.466667), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3(-0.500000, -0.466667,  0.466667), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3(-0.500000,  0.466667, -0.466667), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3(-0.500000, -0.466667, -0.466667), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3( 0.500000,  0.466667,  0.466667), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3( 0.500000, -0.466667, -0.466667), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3( 0.500000,  0.466667, -0.466667), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3(-0.466667, -0.466667,  0.500000), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3( 0.466667, -0.466667, -0.500000), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3(-0.466667, -0.500000,  0.466667), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3( 0.466667,  0.500000,  0.466667), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3(-0.500000,  0.466667,  0.466667), uv: vec2(0.0, 0.0), color},
-        Vertex{position: vec3( 0.500000, -0.466667,  0.466667), uv: vec2(0.0, 0.0), color},
+        Vertex{position: rot*vec3(-0.500000, -0.466667,  0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.466667, -0.500000,  0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.466667, -0.466667,  0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.500000, -0.500000,  0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.466667, -0.500000,  0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.500000,  0.466667,  0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.500000,  0.500000,  0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.500000,  0.466667,  0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.500000, -0.466667, -0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.466667, -0.500000, -0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.466667, -0.466667, -0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.500000, -0.466667,  0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.500000, -0.500000,  0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.500000, -0.466667,  0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.466667,  0.500000,  0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.500000,  0.500000,  0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.466667,  0.500000,  0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.500000,  0.500000,  0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.500000,  0.466667,  0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.500000,  0.466667,  0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.500000,  0.500000, -0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.466667,  0.466667, -0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.466667,  0.500000, -0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.500000,  0.466667, -0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.500000, -0.500000,  0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.500000, -0.466667,  0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.500000,  0.500000,  0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.466667,  0.466667,  0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.466667,  0.500000,  0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.466667,  0.466667,  0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.466667,  0.466667, -0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.500000, -0.466667, -0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.500000,  0.466667, -0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.466667,  0.500000, -0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.500000,  0.500000, -0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.466667,  0.500000,  0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.466667, -0.466667, -0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.500000, -0.500000, -0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.466667, -0.500000, -0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.500000, -0.500000,  0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.466667, -0.500000,  0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.466667, -0.500000,  0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.466667, -0.466667,  0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.466667, -0.500000, -0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.500000, -0.500000, -0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.500000, -0.500000, -0.500000), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.466667,  0.500000, -0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.500000,  0.500000, -0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.500000, -0.466667, -0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.500000, -0.500000, -0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.500000,  0.466667, -0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.500000,  0.500000, -0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.466667,  0.500000, -0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3( 0.500000, -0.466667, -0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.500000,  0.466667, -0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.466667, -0.500000, -0.466667), uv, color: colors::BLACK},
+        Vertex{position: rot*vec3(-0.466667,  0.466667,  0.500000), uv, color: color_south},
+        Vertex{position: rot*vec3( 0.466667, -0.466667,  0.500000), uv, color: color_south},
+        Vertex{position: rot*vec3( 0.466667,  0.466667,  0.500000), uv, color: color_south},
+        Vertex{position: rot*vec3( 0.466667, -0.500000,  0.466667), uv, color: color_north},
+        Vertex{position: rot*vec3(-0.466667, -0.500000, -0.466667), uv, color: color_north},
+        Vertex{position: rot*vec3( 0.466667, -0.500000, -0.466667), uv, color: color_north},
+        Vertex{position: rot*vec3(-0.466667,  0.500000,  0.466667), uv, color: color_south},
+        Vertex{position: rot*vec3( 0.466667,  0.500000, -0.466667), uv, color: color_south},
+        Vertex{position: rot*vec3(-0.466667,  0.500000, -0.466667), uv, color: color_south},
+        Vertex{position: rot*vec3(-0.500000, -0.466667,  0.466667), uv, color: color_north},
+        Vertex{position: rot*vec3(-0.500000,  0.466667, -0.466667), uv, color: color_north},
+        Vertex{position: rot*vec3(-0.500000, -0.466667, -0.466667), uv, color: color_north},
+        Vertex{position: rot*vec3( 0.500000,  0.466667,  0.466667), uv, color: color_south},
+        Vertex{position: rot*vec3( 0.500000, -0.466667, -0.466667), uv, color: color_south},
+        Vertex{position: rot*vec3( 0.500000,  0.466667, -0.466667), uv, color: color_south},
+        Vertex{position: rot*vec3(-0.466667,  0.466667, -0.500000), uv, color: color_south},
+        Vertex{position: rot*vec3( 0.466667,  0.466667, -0.500000), uv, color: color_south},
+        Vertex{position: rot*vec3( 0.466667, -0.466667, -0.500000), uv, color: color_south},
+        Vertex{position: rot*vec3(-0.466667, -0.500000,  0.466667), uv, color: color_north},
+        Vertex{position: rot*vec3( 0.466667,  0.500000,  0.466667), uv, color: color_south},
+        Vertex{position: rot*vec3(-0.500000,  0.466667,  0.466667), uv, color: color_north},
+        Vertex{position: rot*vec3( 0.500000, -0.466667,  0.466667), uv, color: color_south},
+        Vertex{position: rot*vec3(-0.466667,  0.466667, -0.500000), uv, color: color_north},
+        Vertex{position: rot*vec3( 0.466667, -0.466667, -0.500000), uv, color: color_north},
+        Vertex{position: rot*vec3(-0.466667, -0.466667, -0.500000), uv, color: color_north},
+        Vertex{position: rot*vec3(-0.466667,  0.466667,  0.500000), uv, color: color_north},
+        Vertex{position: rot*vec3(-0.466667, -0.466667,  0.500000), uv, color: color_north},
+        Vertex{position: rot*vec3( 0.466667, -0.466667,  0.500000), uv, color: color_north},
     ];
 
     let indices: Vec<u16> = vec![
@@ -181,7 +298,6 @@ pub fn default_cube(color: Color) -> Mesh {
         62,63,64,
         65,66,67,
         68,69,70,
-        71,72,73,
         0,24,1,
         1,24,3,
         5,26,6,
@@ -230,12 +346,13 @@ pub fn default_cube(color: Color) -> Mesh {
         7,6,47,
         55,49,37,
         4,3,49,
-        56,74,57,
-        59,75,60,
-        62,76,63,
-        65,77,66,
-        68,78,69,
-        71,79,72,
+        71,72,73,
+        59,74,60,
+        62,75,63,
+        65,76,66,
+        68,77,69,
+        78,79,80,
+        81,82,83,
     ];
 
     Mesh {

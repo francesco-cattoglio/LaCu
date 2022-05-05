@@ -101,17 +101,21 @@ async fn main() {
                         }
                     });
                     ui.vertical(|ui| {
-                        ui.label("Colori disponibili");
+                        use itertools::Itertools;
+                        ui.label("Cubi disponibili");
                         let square_size = ui.spacing().interact_size.y * egui::vec2(2.0, 2.0);
-                        ui.horizontal(|ui| {
-                            for entry in cubemap.iter() {
-                                let cube: Cube = entry.0;
-                                let info: &CubeInfo = entry.1;
-                                if draw_drag_cube(ui, info.egui_color, square_size) {
-                                    dragged_cube = Some(cube);
+                        for line in &cubemap.iter().chunks(5) {
+                            ui.horizontal(|ui| {
+                                for entry in line {
+                                    let cube: Cube = entry.0;
+                                    let info: &CubeInfo = entry.1;
+                                    if draw_drag_cube(ui, info.egui_shape.clone(), square_size) {
+                                        dragged_cube = Some(cube);
+                                    }
                                 }
-                            }
-                        });
+                            });
+                            ui.add_space(2.0);
+                        }
                         ui.checkbox(&mut show_paving, "Mostra la scacchiera");
                     });
                 });
@@ -225,27 +229,12 @@ async fn main() {
                     draw_cube(vec3(x as f32, y as f32, -0.6), vec3(1.0, 1.0, 0.2), None, paving_color);
                 }
                 for z in 0..GRID_SIZE {
-                    let edge_color = BLACK ;
                     if let Some(cube) = cubes[x][y][z] {
                         let model_matrix = Mat4::from_translation(vec3(x as f32, y as f32, z as f32));
                         let gl = unsafe { get_internal_gl().quad_gl };
                         gl.push_model_matrix(model_matrix);
                         draw_mesh(&cubemap[cube].mesh);
                         gl.pop_model_matrix();
-                        //match cube {
-                        //    Cube::Red => {
-                        //        draw_cube(vec3(x as f32, y as f32, z as f32), vec3(0.99, 0.99, 0.99), None, RED);
-                        //        draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
-                        //    }
-                        //    Cube::Green => {
-                        //        draw_cube(vec3(x as f32, y as f32, z as f32), vec3(0.99, 0.99, 0.99), None, GREEN);
-                        //        draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
-                        //    }
-                        //    Cube::Blue => {
-                        //        draw_cube(vec3(x as f32, y as f32, z as f32), vec3(0.99, 0.99, 0.99), None, BLUE);
-                        //        draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
-                        //    }
-                        //}
                     }
                 }
             }
@@ -280,22 +269,24 @@ fn pop_top(grid: &mut CubeGrid, x: usize, y: usize) -> Option<Cube> {
 fn draw_column(col: &CubeColumn, cubemap: &CubeMap, ui: &mut egui::Ui, rect: egui::Rect, shrink: egui::Vec2) {
     if ui.is_rect_visible(rect) {
         // first, paint "the background"
-        ui.painter()
-            .rect(rect, 0.0, egui::Color32::DARK_GRAY, egui::Stroke::default());
+        ui.painter().rect(rect, 0.0, egui::Color32::DARK_GRAY, egui::Stroke::default());
+        // then, for each element, draw the cube, but shrink it every time we move "up"
         for z in 0..GRID_SIZE {
             if let Some(cube) = col[z] {
-                let cube_color = cubemap[cube].egui_color;
-                    ui.painter()
-                        .rect(rect.shrink2(shrink * z as f32), 0.0, cube_color, egui::Stroke::default());
-                }
+                let mut cube_shape = cubemap[cube].egui_shape.clone();
+                let shrinked = rect.shrink2(shrink * z as f32);
+                translate_scale_shape(&mut cube_shape, shrinked.min.to_vec2(), shrinked.size());
+                ui.painter().add(cube_shape);
+            }
         }
     }
 }
 
-fn draw_drag_cube(ui: &mut egui::Ui, color: egui::Color32, size: egui::Vec2) -> bool {
+fn draw_drag_cube(ui: &mut egui::Ui, mut shape: egui::Shape, size: egui::Vec2) -> bool {
     let (rect, response) = ui.allocate_at_least(size, egui::Sense::drag());
-    ui.painter().rect(rect, 2.0, color, egui::Stroke::default());
-        response.drag_started()
+    translate_scale_shape(&mut shape, rect.min.to_vec2(), rect.size());
+    ui.painter().add(shape);
+    response.drag_started()
 }
 
 fn draw_x_icon(ui: &mut egui::Ui, size: egui::Vec2) -> egui::Response {
@@ -433,4 +424,24 @@ fn create_isometric_camera() -> Camera3D {
         fovy: 6.0,
         ..Default::default()
     }
+}
+
+fn translate_scale_shape(shape: &mut egui::Shape, translation: egui::Vec2, size: egui::Vec2) {
+    match shape {
+        egui::Shape::Rect(ref mut rect_shape) => {
+            rect_shape.rect.max = size.to_pos2();
+        }
+        egui::Shape::Vec(ref mut vec_shape) => {
+            for elem in vec_shape.iter_mut() {
+                translate_scale_shape(elem, egui::vec2(0.0, 0.0), size);
+            }
+        }
+        egui::Shape::Path(ref mut path_shape) => {
+            for point in path_shape.points.iter_mut() {
+                *point = (point.to_vec2() * size).to_pos2();
+            }
+        }
+        _ => unimplemented!()
+    }
+    shape.translate(translation);
 }
