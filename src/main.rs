@@ -1,16 +1,12 @@
-use egui::RichText;
+#[macro_use]
+extern crate enum_map;
+
 use macroquad::prelude::*;
 
 mod cubes;
+use cubes::{Cube, create_default_cubemap, CubeMap, CubeInfo};
 
 const GRID_SIZE: usize = 4;
-
-#[derive(Clone, Copy, Debug)]
-enum Cube {
-    Green,
-    Red,
-    Blue
-}
 
 enum CameraView {
     Front,
@@ -35,6 +31,8 @@ fn window_conf() -> Conf {
 async fn main() {
     let mut camera_view = CameraView::Isometric;
     let mut camera = create_isometric_camera();
+
+    let cubemap = create_default_cubemap();
 
     let mut show_paving: bool = true;
     let mut hide_builder: bool = false;
@@ -91,7 +89,7 @@ async fn main() {
                                                     push_top(&mut cubes, x, y, dropped_cube);
                                                 }
                                             }
-                                            draw_column(&cubes[x][y], ui, rect, shrink_amount);
+                                            draw_column(&cubes[x][y], &cubemap, ui, rect, shrink_amount);
                                         }
                                         ui.end_row();
                                     }
@@ -106,14 +104,12 @@ async fn main() {
                         ui.label("Colori disponibili");
                         let square_size = ui.spacing().interact_size.y * egui::vec2(2.0, 2.0);
                         ui.horizontal(|ui| {
-                            if draw_drag_cube(ui, egui::Color32::RED, square_size) {
-                                dragged_cube = Some(Cube::Red);
-                            }
-                            if draw_drag_cube(ui, egui::Color32::GREEN, square_size) {
-                                dragged_cube = Some(Cube::Green);
-                            }
-                            if draw_drag_cube(ui, egui::Color32::BLUE, square_size) {
-                                dragged_cube = Some(Cube::Blue);
+                            for entry in cubemap.iter() {
+                                let cube: Cube = entry.0;
+                                let info: &CubeInfo = entry.1;
+                                if draw_drag_cube(ui, info.egui_color, square_size) {
+                                    dragged_cube = Some(cube);
+                                }
                             }
                         });
                         ui.checkbox(&mut show_paving, "Mostra la scacchiera");
@@ -231,20 +227,25 @@ async fn main() {
                 for z in 0..GRID_SIZE {
                     let edge_color = BLACK ;
                     if let Some(cube) = cubes[x][y][z] {
-                        match cube {
-                            Cube::Red => {
-                                draw_cube(vec3(x as f32, y as f32, z as f32), vec3(0.99, 0.99, 0.99), None, RED);
-                                draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
-                            }
-                            Cube::Green => {
-                                draw_cube(vec3(x as f32, y as f32, z as f32), vec3(0.99, 0.99, 0.99), None, GREEN);
-                                draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
-                            }
-                            Cube::Blue => {
-                                draw_cube(vec3(x as f32, y as f32, z as f32), vec3(0.99, 0.99, 0.99), None, BLUE);
-                                draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
-                            }
-                        }
+                        let model_matrix = Mat4::from_translation(vec3(x as f32, y as f32, z as f32));
+                        let gl = unsafe { get_internal_gl().quad_gl };
+                        gl.push_model_matrix(model_matrix);
+                        draw_mesh(&cubemap[cube].mesh);
+                        gl.pop_model_matrix();
+                        //match cube {
+                        //    Cube::Red => {
+                        //        draw_cube(vec3(x as f32, y as f32, z as f32), vec3(0.99, 0.99, 0.99), None, RED);
+                        //        draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
+                        //    }
+                        //    Cube::Green => {
+                        //        draw_cube(vec3(x as f32, y as f32, z as f32), vec3(0.99, 0.99, 0.99), None, GREEN);
+                        //        draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
+                        //    }
+                        //    Cube::Blue => {
+                        //        draw_cube(vec3(x as f32, y as f32, z as f32), vec3(0.99, 0.99, 0.99), None, BLUE);
+                        //        draw_cube_wires(vec3(x as f32, y as f32, z as f32), vec3(1.0, 1.0, 1.0), edge_color);
+                        //    }
+                        //}
                     }
                 }
             }
@@ -276,18 +277,14 @@ fn pop_top(grid: &mut CubeGrid, x: usize, y: usize) -> Option<Cube> {
     None
 }
 
-fn draw_column(col: &CubeColumn, ui: &mut egui::Ui, rect: egui::Rect, shrink: egui::Vec2) {
+fn draw_column(col: &CubeColumn, cubemap: &CubeMap, ui: &mut egui::Ui, rect: egui::Rect, shrink: egui::Vec2) {
     if ui.is_rect_visible(rect) {
         // first, paint "the background"
         ui.painter()
             .rect(rect, 0.0, egui::Color32::DARK_GRAY, egui::Stroke::default());
         for z in 0..GRID_SIZE {
             if let Some(cube) = col[z] {
-                let cube_color = match cube {
-                    Cube::Green => egui::Color32::GREEN,
-                    Cube::Red => egui::Color32::RED,
-                    Cube::Blue => egui::Color32::BLUE,
-                };
+                let cube_color = cubemap[cube].egui_color;
                     ui.painter()
                         .rect(rect.shrink2(shrink * z as f32), 0.0, cube_color, egui::Stroke::default());
                 }

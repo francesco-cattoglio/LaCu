@@ -9,6 +9,7 @@ edition = "2021"
 macroquad = { version = "0.3", default-features = false }
 egui = "0.17"
 egui-macroquad = "0.9.0"
+enum-map = "2.1.0"
 
 [profile.release]
 lto = true
